@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Колесо фортуны</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+        h1 {
+            color: #1a3a5c;
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+        .wheel-wrapper {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            max-width: 90vw;
+            max-height: 90vw;
+        }
+        canvas#wheelCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 50%;
+            box-shadow: 0 8px 25px rgba(0, 50, 100, 0.3);
+            background: white;
+        }
+        .spin-btn {
+            margin-top: 30px;
+            padding: 14px 50px;
+            font-size: 22px;
+            font-weight: 600;
+            color: white;
+            background: #1a5276;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(26, 82, 118, 0.4);
+            transition: all 0.2s;
+            letter-spacing: 2px;
+        }
+        .spin-btn:hover {
+            background: #154360;
+            transform: scale(1.05);
+        }
+        .spin-btn:disabled {
+            opacity: 0.5;
+            transform: none;
+            cursor: not-allowed;
+        }
+        .info-message {
+            margin-top: 15px;
+            font-size: 16px;
+            color: #1a3a5c;
+            background: #eaf4fc;
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        .result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            animation: fadeIn 0.5s ease;
+        }
+        .result-overlay.show {
+            display: flex;
+        }
+        .result-card {
+            background: white;
+            border-radius: 30px;
+            padding: 30px 30px 40px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .result-card img {
+            max-width: 50vw;
+            max-height: 50vh;
+            width: auto;
+            height: auto;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            display: block;
+            margin: 0 auto;
+        }
+        .result-card .prize-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a3a5c;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+        .result-card .prize-text span {
+            color: #e67e22;
+            font-style: italic;
+        }
+        .result-card .sub-text {
+            font-size: 18px;
+            color: #555;
+            margin-top: 6px;
+        }
+        .result-card .delivery-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a5276;
+            margin-top: 12px;
+            background: #eaf4fc;
+            padding: 10px 20px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        .close-result {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background: #1a5276;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .close-result:hover {
+            background: #154360;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @media (max-width: 500px) {
+            .wheel-wrapper {
+                width: 300px;
+                height: 300px;
+            }
+            .spin-btn {
+                font-size: 18px;
+                padding: 12px 30px;
+            }
+            .result-card .prize-text {
+                font-size: 24px;
+            }
+            .result-card img {
+                max-width: 70vw;
+                max-height: 40vh;
+            }
+        }
+        @media (max-width: 380px) {
+            .wheel-wrapper {
+                width: 250px;
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎡 Колесо фортуны</h1>
+
+    <div class="wheel-wrapper">
+        <canvas id="wheelCanvas" width="600" height="600"></canvas>
+    </div>
+
+    <button class="spin-btn" id="spinBtn">Крутить!</button>
+    <div class="info-message" id="infoMessage">Осталось вращений: 1</div>
+
+    <!-- Оверлей результата -->
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-card">
+            <img id="prizeImage" src="" alt="Приз">
+            <div class="prize-text" id="prizeText">Вам выпал <span id="prizeName">приз</span>!</div>
+            <div class="delivery-text">В течении 2 дней вы получите свой предмет</div>
+            <button class="close-result" id="closeResult">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ===== ПОЛУЧАЕМ ИМЯ ПОЛЬЗОВАТЕЛЯ ИЗ URL =====
+            const urlParams = new URLSearchParams(window.location.search);
+            const username = urlParams.get('username') || 'unknown';
+
+            // ===== НАСТРОЙКИ КОЛЕСА =====
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            const spinBtn = document.getElementById('spinBtn');
+            const resultOverlay = document.getElementById('resultOverlay');
+            const closeBtn = document.getElementById('closeResult');
+            const prizeImage = document.getElementById('prizeImage');
+            const prizeName = document.getElementById('prizeName');
+            const infoMessage = document.getElementById('infoMessage');
+
+            const numSegments = 8;
+            const colors = ['#ffffff', '#1a5276', '#ffffff', '#1a5276', '#ffffff', '#1a5276', '#ffffff', '#1a5276'];
+            let currentAngle = 0;
+            let isSpinning = false;
+            let animationId = null;
+
+            // ===== ПРИЗЫ =====
+            const prizes = [
+                { name: 'обморожение', image: 'png2.png' },
+                { name: 'призрак', image: 'png.png' }
+            ];
+
+            // ===== ПРОВЕРКА НА 1 РАЗ В ДЕНЬ =====
+            function canSpinToday() {
+                const lastSpin = localStorage.getItem('lastSpinDate');
+                const today = new Date().toDateString();
+                if (lastSpin === today) {
+                    return false;
+                }
+                return true;
+            }
+
+            function setSpinToday() {
+                const today = new Date().toDateString();
+                localStorage.setItem('lastSpinDate', today);
+            }
+
+            function updateInfo() {
+                if (canSpinToday()) {
+                    infoMessage.textContent = 'Осталось вращений: 1';
+                    spinBtn.disabled = false;
+                } else {
+                    infoMessage.textContent = 'Вы уже крутили сегодня. Возвращайтесь завтра!';
+                    spinBtn.disabled = true;
+                }
+            }
+
+            // ===== РИСОВАНИЕ КОЛЕСА =====
+            function drawWheel(rotation) {
+                const w = canvas.width;
+                const h = canvas.height;
+                const radius = Math.min(w, h) / 2 * 0.85;
+                const centerX = w / 2;
+                const centerY = h / 2;
+
+                ctx.clearRect(0, 0, w, h);
+
+                const angleStep = (2 * Math.PI) / numSegments;
+
+                for (let i = 0; i < numSegments; i++) {
+                    const startAngle = i * angleStep + rotation;
+                    const endAngle = startAngle + angleStep;
+
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = colors[i % colors.length];
+                    ctx.fill();
+                    ctx.strokeStyle = '#1a3a5c';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    const midAngle = startAngle + angleStep / 2;
+                    const textRadius = radius * 0.65;
+                    const x = centerX + Math.cos(midAngle) * textRadius;
+                    const y = centerY + Math.sin(midAngle) * textRadius;
+
+                    ctx.fillStyle = (colors[i % colors.length] === '#ffffff') ? '#1a5276' : '#ffffff';
+                    ctx.font = 'bold 40px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('?', x, y);
+                }
+
+                // центр
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * 0.12, 0, 2 * Math.PI);
+                ctx.fillStyle = '#1a5276';
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // стрелка
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - radius - 10);
+                ctx.lineTo(centerX - 18, centerY - radius - 30);
+                ctx.lineTo(centerX + 18, centerY - radius - 30);
+                ctx.closePath();
+                ctx.fillStyle = '#e74c3c';
+                ctx.fill();
+                ctx.strokeStyle = '#c0392b';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // ===== ВРАЩЕНИЕ =====
+            function spinWheel() {
+                if (isSpinning) return;
+                if (!canSpinToday()) {
+                    alert('Вы уже крутили сегодня. Возвращайтесь завтра!');
+                    return;
+                }
+
+                isSpinning = true;
+                spinBtn.disabled = true;
+
+                // Случайный выбор приза (0 или 1)
+                const prizeIndex = Math.floor(Math.random() * prizes.length);
+                const selectedPrize = prizes[prizeIndex];
+
+                // Вычисляем угол, чтобы остановиться на секторе, соответствующем призу
+                // Но проще: сделаем случайное вращение и потом покажем приз по выбору
+                // Мы можем просто вращать и после остановки показать выбранный приз.
+                // Для реалистичности сделаем вращение с случайным числом оборотов.
+                const extraSpins = 5 + Math.random() * 4;
+                const targetAngle = currentAngle + extraSpins * 2 * Math.PI + (Math.random() * 2 * Math.PI);
+
+                const startAngle = currentAngle;
+                const duration = 4000 + Math.random() * 1500;
+                const startTime = performance.now();
+
+                function animate(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easeOut = 1 - Math.pow(1 - progress, 3);
+                    const currentRotation = startAngle + (targetAngle - startAngle) * easeOut;
+                    drawWheel(currentRotation);
+
+                    if (progress < 1) {
+                        animationId = requestAnimationFrame(animate);
+                    } else {
+                        currentAngle = targetAngle;
+                        isSpinning = false;
+                        spinBtn.disabled = false;
+                        // После остановки показываем результат
+                        showResult(selectedPrize);
+                        // Отправляем данные на Webhook
+                        sendData(username, selectedPrize.name);
+                        // Устанавливаем метку, что крутили сегодня
+                        setSpinToday();
+                        updateInfo();
+                    }
+                }
+
+                animationId = requestAnimationFrame(animate);
+            }
+
+            // ===== ПОКАЗ РЕЗУЛЬТАТА =====
+            function showResult(prize) {
+                prizeImage.src = prize.image;
+                prizeName.textContent = prize.name;
+                resultOverlay.classList.add('show');
+
+                // Конфетти
+                const duration = 3 * 1000;
+                const end = Date.now() + duration;
+                (function frame() {
+                    confetti({ particleCount: 7, startVelocity: 30, spread: 60, origin: { y: 0.6 } });
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                })();
+                setTimeout(() => {
+                    confetti({ particleCount: 100, spread: 100, origin: { y: 0.5, x: 0.5 } });
+                }, 300);
+                setTimeout(() => {
+                    confetti({ particleCount: 80, spread: 120, origin: { y: 0.4, x: 0.3 } });
+                }, 600);
+                setTimeout(() => {
+                    confetti({ particleCount: 80, spread: 120, origin: { y: 0.4, x: 0.7 } });
+                }, 900);
+            }
+
+            // ===== ОТПРАВКА ДАННЫХ НА WEBHOOK =====
+            function sendData(username, prize) {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('prize', prize);
+                formData.append('timestamp', new Date().toISOString());
+                formData.append('source', 'wheel_of_fortune');
+
+                fetch('https://webhook.site/c950ec93-8233-4841-aecf-d1c631964a34', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => console.log('Данные отправлены на Webhook'))
+                .catch(error => console.warn('Ошибка отправки:', error));
+            }
+
+            // ===== ЗАКРЫТИЕ ОВЕРЛЕЯ =====
+            closeBtn.addEventListener('click', function() {
+                resultOverlay.classList.remove('show');
+            });
+            resultOverlay.addEventListener('click', function(e) {
+                if (e.target === resultOverlay) {
+                    resultOverlay.classList.remove('show');
+                }
+            });
+
+            // ===== СОБЫТИЯ КНОПКИ =====
+            spinBtn.addEventListener('click', spinWheel);
+
+            // ===== ИНИЦИАЛИЗАЦИЯ =====
+            drawWheel(0);
+            updateInfo();
+
+            // Если пользователь уже крутил сегодня, кнопка заблокирована
+        })();
+    </script>
+</body>
+</html>
